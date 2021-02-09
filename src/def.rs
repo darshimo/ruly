@@ -1,5 +1,6 @@
 use regex::Regex;
 
+#[macro_export]
 macro_rules! set_enum {
     ( ($t:ty,0) ) => {
         Vec<$t>
@@ -22,6 +23,7 @@ macro_rules! set_enum {
     };
 }
 
+#[macro_export]
 macro_rules! set_fun {
     ( ($t:ty,0); $p:ident ) => {{
         let mut v = vec![];
