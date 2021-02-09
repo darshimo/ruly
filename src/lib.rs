@@ -1,62 +1,204 @@
-#[macro_use]
-pub mod def;
-pub mod rules;
-
-use def::{Parse, Ruly};
 use regex::Regex;
-use rules::{
-    Judgement::Plus,
-    Nat::{Succ, Zero},
-};
 
-#[test]
-fn test() {
-    let z = Zero(String::from("Z"));
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __set_enum {
+    ( ($t:ty,0) ) => {
+        Vec<$t>
+    };
 
-    let n1 = Succ(
-        String::from("S"),
-        String::from("("),
-        Box::new(z.clone()),
-        String::from(")"),
-    );
+    ( ($t:ty,1) ) => {
+        Vec<$t>
+    };
 
-    let n2 = Succ(
-        String::from("S"),
-        String::from("("),
-        Box::new(n1.clone()),
-        String::from(")"),
-    );
+    ( $t:ty ) => {
+        Box<$t>
+    };
 
-    let n3 = Succ(
-        String::from("S"),
-        String::from("("),
-        Box::new(n2.clone()),
-        String::from(")"),
-    );
+    ( { $e:expr, $sort:ty, $c:expr } ) => {
+        $sort
+    };
 
-    let n4 = Succ(
-        String::from("S"),
-        String::from("("),
-        Box::new(n3.clone()),
-        String::from(")"),
-    );
+    ( { $e:expr } ) => {
+        String
+    };
+}
 
-    let j1 = Plus(
-        Box::new(n1),
-        String::from("plus"),
-        Box::new(n2),
-        String::from("is"),
-        Box::new(n4),
-    );
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __set_fun {
+    ( ($t:ty,0); $p:ident ) => {{
+        let mut v = vec![];
 
-    let s = "S(Z) plus S(S(Z)) is S(S(S(S(Z))))";
-    let mut ruly = Ruly::new();
-    ruly.set_skip_reg(Regex::new(r"[ \n\r\t]*").unwrap());
-    ruly.set_input(&s);
+        while let Ok(a) = <$t>::read($p) {
+            v.push(a);
+        }
 
-    if let Ok(j2) = ruly.run::<rules::Judgement>() {
-        assert_eq!(j1, j2);
-    } else {
-        assert!(false);
+        v
+    }};
+
+    ( ($t:ty,1); $p:ident ) => {{
+        let mut v = vec![<$t>::read($p)?];
+
+        while let Ok(a) = <$t>::read($p) {
+            v.push(a);
+        }
+
+        v
+    }};
+
+    ( $t:ty; $p:ident ) => {{
+        Box::new(<$t>::read($p)?)
+    }};
+
+    ( {  $t:expr, $sort:ty, $c:expr }; $p:ident ) => {{
+        let tmp = $p.get_current();
+        let reg = $t;
+        let closure = $c;
+
+        match $p.find_at_top(reg) {
+            None => {
+                return Err((String::from("no match"), tmp));
+            }
+
+            Some((end, s)) => {
+                $p.set_current(end);
+                $p.skip();
+                closure(s)
+            }
+        }
+    }};
+
+    ( { $t:expr }; $p:ident ) => {{
+        let tmp = $p.get_current();
+        let reg = $t;
+
+        match $p.find_at_top(reg) {
+            None => {
+                return Err((String::from("no match"), tmp));
+            }
+
+            Some((end, s)) => {
+                $p.set_current(end);
+                $p.skip();
+                s.to_string()
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! add_rule {
+    ( $v:ident => $( $i:ident ( $( $sort:tt ),* ) )|+ ) => {
+        #[derive(Debug, Eq, PartialEq, Clone)]
+        pub enum $v {
+            $( $i( $( __set_enum!( $sort ) ),*  ) ),*
+        }
+        impl<P: Parse> Product<P> for $v {
+            fn read(parser: &mut P) -> Result<Self, (String, usize)>{
+                let start_point = parser.get_current();
+
+                $(
+                let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
+                    Ok($v::$i(
+                        $( __set_fun!($sort; p) ,)*
+                    ))
+                };
+                if let Ok(a) = tmp(parser){
+                    return Ok(a);
+                }
+                parser.set_current(start_point);
+                )*
+
+                Err((String::from("no match"), start_point))
+            }
+        }
+    };
+}
+
+pub trait Parse: Sized {
+    fn skip(&mut self);
+    fn get_current(&self) -> usize;
+    fn set_current(&mut self, c: usize);
+    fn find_at_top(&self, reg: Regex) -> Option<(usize, String)>;
+    fn is_end(&self) -> bool;
+
+    fn new() -> Self;
+    fn set_input(&mut self, s: &str);
+    fn set_skip_reg(&mut self, reg: Regex);
+    fn get_nect_chars(&self) -> String;
+    fn run<T: Product<Self>>(&mut self) -> Result<T, (String, usize)>;
+}
+
+pub trait Product<P: Parse>: Sized {
+    fn read(p: &mut P) -> Result<Self, (String, usize)>;
+}
+
+#[derive(Debug)]
+pub struct Ruly {
+    input: String,
+    current: usize,
+    skip_reg: Regex,
+}
+impl Parse for Ruly {
+    fn skip(&mut self) {
+        if let Some(mat) = self.skip_reg.find_at(&self.input, self.current) {
+            if self.current == mat.start() {
+                self.current = mat.end();
+            }
+        }
+    }
+
+    fn get_current(&self) -> usize {
+        self.current
+    }
+
+    fn set_current(&mut self, c: usize) {
+        self.current = c;
+    }
+
+    fn find_at_top(&self, reg: Regex) -> Option<(usize, String)> {
+        if let Some(mat) = reg.find_at(&self.input, self.current) {
+            if self.current == mat.start() {
+                return Some((mat.end(), mat.as_str().to_string()));
+            }
+        }
+
+        None
+    }
+
+    fn is_end(&self) -> bool {
+        self.current == self.input.len()
+    }
+
+    fn get_nect_chars(&self) -> String {
+        String::from(&self.input[self.current..std::cmp::min(self.input.len(), self.current + 20)])
+    }
+
+    fn new() -> Self {
+        Ruly {
+            input: String::new(),
+            current: 0,
+            skip_reg: Regex::new(r"").unwrap(),
+        }
+    }
+
+    fn set_input(&mut self, s: &str) {
+        self.input = s.to_string();
+        self.current = 0;
+    }
+
+    fn set_skip_reg(&mut self, reg: Regex) {
+        self.skip_reg = reg;
+    }
+
+    fn run<T: Product<Self>>(&mut self) -> Result<T, (String, usize)> {
+        self.skip();
+        let ret = T::read(self);
+        if self.is_end() {
+            ret
+        } else {
+            Err((self.get_nect_chars(), self.get_current()))
+        }
     }
 }
