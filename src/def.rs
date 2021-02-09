@@ -83,6 +83,7 @@ macro_rules! set_fun {
     }};
 }
 
+#[macro_export]
 macro_rules! add_rule {
     ( $v:ident => $( $i:ident ( $( $sort:tt ),* ) )|+ ) => {
         #[derive(Debug, Eq, PartialEq, Clone)]
