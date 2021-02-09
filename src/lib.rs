@@ -117,16 +117,9 @@ macro_rules! add_rule {
 }
 
 pub trait Parse: Sized {
-    fn skip(&mut self);
-    fn get_current(&self) -> usize;
-    fn set_current(&mut self, c: usize);
-    fn find_at_top(&self, reg: Regex) -> Option<(usize, String)>;
-    fn is_end(&self) -> bool;
-
     fn new() -> Self;
     fn set_input(&mut self, s: &str);
     fn set_skip_reg(&mut self, reg: Regex);
-    fn get_nect_chars(&self) -> String;
     fn run<T: Product<Self>>(&mut self) -> Result<T, (String, usize)>;
 }
 
@@ -140,7 +133,7 @@ pub struct Ruly {
     current: usize,
     skip_reg: Regex,
 }
-impl Parse for Ruly {
+impl Ruly {
     fn skip(&mut self) {
         if let Some(mat) = self.skip_reg.find_at(&self.input, self.current) {
             if self.current == mat.start() {
@@ -171,10 +164,11 @@ impl Parse for Ruly {
         self.current == self.input.len()
     }
 
-    fn get_nect_chars(&self) -> String {
+    fn get_next_chars(&self) -> String {
         String::from(&self.input[self.current..std::cmp::min(self.input.len(), self.current + 20)])
     }
-
+}
+impl Parse for Ruly {
     fn new() -> Self {
         Ruly {
             input: String::new(),
@@ -198,7 +192,7 @@ impl Parse for Ruly {
         if self.is_end() {
             ret
         } else {
-            Err((self.get_nect_chars(), self.get_current()))
+            Err((self.get_next_chars(), self.get_current()))
         }
     }
 }
