@@ -1,32 +1,9 @@
+use pmacro::{create_enum, create_match};
 use regex::Regex;
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! __set_enum {
-    ( ($t:ty,0) ) => {
-        Vec<$t>
-    };
-
-    ( ($t:ty,1) ) => {
-        Vec<$t>
-    };
-
-    ( $t:ty ) => {
-        Box<$t>
-    };
-
-    ( { $e:expr, $sort:ty, $c:expr } ) => {
-        $sort
-    };
-
-    ( { $e:expr } ) => {
-        String
-    };
-}
-
-#[macro_export]
-#[doc(hidden)]
-macro_rules! __set_fun {
+macro_rules! __set_fun_sub {
     ( ($t:ty,0); $p:ident ) => {{
         let mut v = vec![];
 
@@ -64,7 +41,7 @@ macro_rules! __set_fun {
             Some((end, s)) => {
                 $p.set_current(end);
                 $p.skip();
-                closure(s)
+                (s.to_string(), closure(s))
             }
         }
     }};
@@ -87,22 +64,24 @@ macro_rules! __set_fun {
     }};
 }
 
+macro_rules! __set_fun {
+    ( $v:ident ; $i:ident ; ( $($sort:tt),* ); $p:ident ) => {
+        Ok( $v::$i( $( __set_fun_sub!($sort;$p) ),* ) )
+    };
+}
+
 #[macro_export]
 macro_rules! add_rule {
-    ( $v:ident => $( $i:ident ( $( $sort:tt ),* ) )|+ ) => {
-        #[derive(Debug, Eq, PartialEq, Clone)]
-        pub enum $v {
-            $( $i( $( __set_enum!( $sort ) ),*  ) ),*
-        }
+    ( $v:ident => $( $i:ident $sorts:tt )|+ ) => {
+        create_enum!($v [ $([$i $sorts]),* ] );
+
         impl<P: Parse> Product<P> for $v {
             fn read(parser: &mut P) -> Result<Self, (String, usize)>{
                 let start_point = parser.get_current();
 
                 $(
                 let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
-                    Ok($v::$i(
-                        $( __set_fun!($sort; p) ,)*
-                    ))
+                    __set_fun!($v;$i;$sorts;p)
                 };
                 if let Ok(a) = tmp(parser){
                     return Ok(a);
@@ -111,6 +90,13 @@ macro_rules! add_rule {
                 )*
 
                 Err((String::from("no match"), start_point))
+            }
+        }
+
+        impl std::fmt::Display for $v {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+                create_match!($v [ $([$i $sorts]),* ] );
+                write!(f, "")
             }
         }
     };
@@ -212,5 +198,38 @@ impl Ruly {
 
     fn get_next_chars(&self) -> String {
         String::from(&self.input[self.current..std::cmp::min(self.input.len(), self.current + 20)])
+    }
+}
+
+#[test]
+fn test() {
+    add_rule!(
+        Nat => Zero ({reg("Z")})
+            |   Succ ({reg("S")},{reg(r"\(")},Nat,{reg(r"\)")})
+    );
+
+    add_rule!(
+        Judgement => Plus (Nat, {reg("plus")}, Nat, {reg("is")}, Nat)
+            |   Times (Nat, {reg("times")}, Nat, {reg("is")}, Nat)
+    );
+
+    fn reg(s: &str) -> regex::Regex {
+        Regex::new(s).unwrap()
+    }
+
+    let s = "S(Z) plus S(S(S(Z))) is S(S(S(S(Z))))";
+    let mut ruly = Ruly::new();
+    ruly.set_skip_reg(Regex::new(r"[ \n\r\t]*").unwrap());
+    ruly.set_input(&s);
+
+    match ruly.run::<Judgement>() {
+        Ok(judgement) => {
+            println!("{:?}", judgement);
+            println!("{}", judgement);
+        }
+
+        err => {
+            println!("{:?}", err);
+        }
     }
 }
