@@ -13,4 +13,4 @@ repository = "https://github.com/darshimo/ruly"
 
 [dependencies]
 regex = "1.4.3"
-pmacro = { path = "pmacro" }
+pmacro_ruly = "0.1.0"

@@ -1,4 +1,4 @@
-use pmacro::{create_enum, create_match};
+use pmacro_ruly::{create_enum, create_match};
 use regex::Regex;
 
 #[macro_export]
