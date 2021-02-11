@@ -64,6 +64,8 @@ macro_rules! __set_fun_sub {
     }};
 }
 
+#[macro_export]
+#[doc(hidden)]
 macro_rules! __set_fun {
     ( $v:ident ; $i:ident ; ( $($sort:tt),* ); $p:ident ) => {
         Ok( $v::$i( $( __set_fun_sub!($sort;$p) ),* ) )
