@@ -2,6 +2,7 @@ extern crate proc_macro;
 use proc_macro::{Delimiter, TokenStream, TokenTree};
 
 #[proc_macro]
+#[doc(hidden)]
 pub fn create_enum(item: TokenStream) -> TokenStream {
     let input: Vec<TokenTree> = item.into_iter().collect();
 
@@ -96,6 +97,7 @@ pub fn create_enum(item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+#[doc(hidden)]
 pub fn create_match(item: TokenStream) -> TokenStream {
     let input: Vec<TokenTree> = item.into_iter().collect();
     let mut n: u32 = 0;
