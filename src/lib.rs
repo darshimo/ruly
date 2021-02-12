@@ -40,16 +40,51 @@ pub fn create_enum(item: TokenStream) -> TokenStream {
                                             // regex
                                             let gvv: Vec<TokenTree> =
                                                 g.stream().into_iter().collect();
-                                            if let None = gvv.get(2) {
-                                                // String
-                                                s += "String";
-                                            } else {
-                                                // (String, T)
-                                                if let Some(TokenTree::Ident(idd)) = gvv.get(3) {
-                                                    s += &format!("(String,{})", idd.to_string());
-                                                } else {
-                                                    panic!("syntax error7.");
+
+                                            if let Some(hoge) = gvv.get(0) {
+                                                match hoge {
+                                                    TokenTree::Group(_) => {
+                                                        // regex
+                                                        if let None = gvv.get(1) {
+                                                            // String
+                                                            s += "String";
+                                                        } else if let Some(TokenTree::Ident(idd)) =
+                                                            gvv.get(2)
+                                                        {
+                                                            // (String, T)
+                                                            s += &format!(
+                                                                "(String,{})",
+                                                                idd.to_string()
+                                                            );
+                                                        } else {
+                                                            panic!("syntax error7.");
+                                                        }
+                                                    }
+
+                                                    TokenTree::Ident(_) => {
+                                                        // reserved word
+                                                        if let None = gvv.get(2) {
+                                                            // String
+                                                            s += "String";
+                                                        } else if let Some(TokenTree::Ident(idd)) =
+                                                            gvv.get(3)
+                                                        {
+                                                            // (String, T)
+                                                            s += &format!(
+                                                                "(String,{})",
+                                                                idd.to_string()
+                                                            );
+                                                        } else {
+                                                            panic!("syntax error7.");
+                                                        }
+                                                    }
+
+                                                    _ => {
+                                                        panic!("syntax error10.");
+                                                    }
                                                 }
+                                            } else {
+                                                panic!("syntax error9.");
                                             }
                                         } else if g.delimiter() == Delimiter::Parenthesis {
                                             // Vec<T>
@@ -140,22 +175,57 @@ pub fn create_match(item: TokenStream) -> TokenStream {
 
                                             let gvv: Vec<TokenTree> =
                                                 g.stream().into_iter().collect();
-                                            if let None = gvv.get(2) {
-                                                // String
-                                                exp += &format!(
-                                                    r#"write!(f,"{}{}",field{});"#,
-                                                    r"{", r"}", n
-                                                );
-                                            } else {
-                                                // (String, T)
-                                                if let Some(TokenTree::Ident(_)) = gvv.get(3) {
-                                                    exp += &format!(
-                                                        r#"write!(f,"{}{}",field{}.0);"#,
-                                                        r"{", r"}", n
-                                                    );
-                                                } else {
-                                                    panic!("syntax error7.");
+
+                                            if let Some(hoge) = gvv.get(0) {
+                                                match hoge {
+                                                    TokenTree::Group(_) => {
+                                                        // regex
+                                                        if let None = gvv.get(1) {
+                                                            // String
+                                                            exp += &format!(
+                                                                r#"write!(f,"{}{}",field{});"#,
+                                                                r"{", r"}", n
+                                                            );
+                                                        } else if let Some(TokenTree::Ident(_)) =
+                                                            gvv.get(2)
+                                                        {
+                                                            // (String, T)
+                                                            exp += &format!(
+                                                                r#"write!(f,"{}{}",field{}.0);"#,
+                                                                r"{", r"}", n
+                                                            );
+                                                        } else {
+                                                            panic!("syntax error7.");
+                                                        }
+                                                    }
+
+                                                    TokenTree::Ident(_) => {
+                                                        // reserved word
+                                                        if let None = gvv.get(2) {
+                                                            // String
+                                                            exp += &format!(
+                                                                r#"write!(f,"{}{}",field{});"#,
+                                                                r"{", r"}", n
+                                                            );
+                                                        } else if let Some(TokenTree::Ident(_)) =
+                                                            gvv.get(3)
+                                                        {
+                                                            // (String, T)
+                                                            exp += &format!(
+                                                                r#"write!(f,"{}{}",field{}.0);"#,
+                                                                r"{", r"}", n
+                                                            );
+                                                        } else {
+                                                            panic!("syntax error7.");
+                                                        }
+                                                    }
+
+                                                    _ => {
+                                                        panic!("syntax error10.");
+                                                    }
                                                 }
+                                            } else {
+                                                panic!("syntax error9.");
                                             }
                                         } else if g.delimiter() == Delimiter::Parenthesis {
                                             // Vec<T>
