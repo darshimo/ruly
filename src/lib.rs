@@ -28,9 +28,9 @@ macro_rules! __set_fun_sub {
         Box::new(<$t>::read($p)?)
     }};
 
-    ( {  $t:expr, $sort:ty, $c:expr }; $p:ident ) => {{
+    ( {  ( $t:expr ), $sort:ty, $c:expr }; $p:ident ) => {{
         let tmp = $p.get_current();
-        let reg = $t;
+        let reg = Regex::new($t).unwrap();
         let closure = $c;
 
         match $p.find_at_top(reg) {
@@ -39,6 +39,10 @@ macro_rules! __set_fun_sub {
             }
 
             Some((end, s)) => {
+                if ReservedWords.contains(&{ &s.to_string() }) {
+                    return Err((String::from("no match"), tmp));
+                }
+
                 $p.set_current(end);
                 $p.skip();
                 (s.to_string(), closure(s))
@@ -46,9 +50,10 @@ macro_rules! __set_fun_sub {
         }
     }};
 
-    ( { $t:expr }; $p:ident ) => {{
+    ( {  Reserved ( $t:expr ), $sort:ty, $c:expr }; $p:ident ) => {{
         let tmp = $p.get_current();
-        let reg = $t;
+        let reg = Regex::new($t).unwrap();
+        let closure = $c;
 
         match $p.find_at_top(reg) {
             None => {
@@ -56,6 +61,52 @@ macro_rules! __set_fun_sub {
             }
 
             Some((end, s)) => {
+                if !ReservedWords.contains(&{ &s.to_string() }) {
+                    return Err((String::from("no match"), tmp));
+                }
+
+                $p.set_current(end);
+                $p.skip();
+                (s.to_string(), closure(s))
+            }
+        }
+    }};
+
+    ( { ( $t:expr ) }; $p:ident ) => {{
+        let tmp = $p.get_current();
+        let reg = Regex::new($t).unwrap();
+
+        match $p.find_at_top(reg) {
+            None => {
+                return Err((String::from("no match"), tmp));
+            }
+
+            Some((end, s)) => {
+                if ReservedWords.contains(&{ &s.to_string() }) {
+                    return Err((String::from("no match"), tmp));
+                }
+
+                $p.set_current(end);
+                $p.skip();
+                s.to_string()
+            }
+        }
+    }};
+
+    ( { Reserved ( $t:expr ) }; $p:ident ) => {{
+        let tmp = $p.get_current();
+        let reg = Regex::new($t).unwrap();
+
+        match $p.find_at_top(reg) {
+            None => {
+                return Err((String::from("no match"), tmp));
+            }
+
+            Some((end, s)) => {
+                if !ReservedWords.contains(&{ &s.to_string() }) {
+                    return Err((String::from("no match"), tmp));
+                }
+
                 $p.set_current(end);
                 $p.skip();
                 s.to_string()
@@ -103,6 +154,13 @@ macro_rules! add_rule {
                 write!(f, "")
             }
         }
+    };
+}
+
+#[macro_export]
+macro_rules! reserved_words {
+    ( $( $e:expr ),* ) => {
+        const ReservedWords: [&str; 0 $(  + { $e ; 1 } )* ] = [ $( $e ),* ];
     };
 }
 
@@ -205,21 +263,21 @@ impl Ruly {
     }
 }
 
+reserved_words!();
+
 #[test]
 fn test() {
     add_rule!(
-        Nat => Zero ({reg("Z")})
-            |   Succ ({reg("S")},{reg(r"\(")},Nat,{reg(r"\)")})
+        Nat => Zero ({("Z")})
+            |   Succ ({("S")},{(r"\(")},Nat,{(r"\)")})
     );
 
     add_rule!(
-        Judgement => Plus (Nat, {reg("plus")}, Nat, {reg("is")}, Nat)
-            |   Times (Nat, {reg("times")}, Nat, {reg("is")}, Nat)
+        Judgement => Plus (Nat, {("plus")}, Nat, {("is")}, Nat)
+            |   Times (Nat, {("times")}, Nat, {("is")}, Nat)
     );
 
-    fn reg(s: &str) -> regex::Regex {
-        Regex::new(s).unwrap()
-    }
+    println!("reserved words: {:?}", ReservedWords);
 
     let s = "S(Z) plus S(S(S(Z))) is S(S(S(S(Z))))";
     let mut ruly = Ruly::new();
