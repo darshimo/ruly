@@ -82,13 +82,15 @@ macro_rules! add_rule {
                 let start_point = parser.get_current();
 
                 $(
-                let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
-                    __set_fun!($v;$i;$sorts;p)
-                };
-                if let Ok(a) = tmp(parser){
-                    return Ok(a);
+                if !stringify!($i).starts_with("Dummy") {
+                    let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
+                        __set_fun!($v;$i;$sorts;p)
+                    };
+                    if let Ok(a) = tmp(parser){
+                        return Ok(a);
+                    }
+                    parser.set_current(start_point);
                 }
-                parser.set_current(start_point);
                 )*
 
                 Err((String::from("no match"), start_point))
