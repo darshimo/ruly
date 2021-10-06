@@ -1,4 +1,4 @@
-use pmacro_ruly::*;
+pub use pmacro_ruly::*;
 use regex::Regex;
 
 #[macro_export(local_inner_macros)]
