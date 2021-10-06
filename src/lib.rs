@@ -1,7 +1,7 @@
-use pmacro_ruly::{create_enum, create_match};
+use pmacro_ruly::*;
 use regex::Regex;
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __set_fun_sub {
     ( ($t:ty,0); $p:ident ) => {{
@@ -115,7 +115,7 @@ macro_rules! __set_fun_sub {
     }};
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __set_fun {
     ( $v:ident ; $i:ident ; ( $($sort:tt),* ); $p:ident ) => {
@@ -123,7 +123,7 @@ macro_rules! __set_fun {
     };
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! add_rule {
     ( $v:ident => $( $i:ident $sorts:tt )|+ ) => {
         create_enum!($v [ $([$i $sorts]),* ] );
@@ -133,7 +133,7 @@ macro_rules! add_rule {
                 let start_point = parser.get_current();
 
                 $(
-                if !stringify!($i).starts_with("Dummy") {
+                if !std::stringify!($i).starts_with("Dummy") {
                     let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
                         __set_fun!($v;$i;$sorts;p)
                     };
@@ -151,13 +151,13 @@ macro_rules! add_rule {
         impl std::fmt::Display for $v {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
                 create_match!($v [ $([$i $sorts]),* ] );
-                write!(f, "")
+                std::write!(f, "")
             }
         }
     };
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! reserved_words {
     ( $( $e:expr ),* ) => {
         const ReservedWords: [&str; 0 $(  + { $e ; 1 } )* ] = [ $( $e ),* ];
