@@ -182,7 +182,7 @@ pub trait Parse: Sized {
 
     fn set_input(&mut self, s: &str);
 
-    fn set_skip_reg(&mut self, reg: Regex);
+    fn set_skip_reg(&mut self, reg_str: &str);
 
     fn run<T: Product<Self>>(&mut self) -> Result<T, (String, usize)>;
 }
@@ -238,8 +238,8 @@ impl Parse for Ruly {
         self.current = 0;
     }
 
-    fn set_skip_reg(&mut self, reg: Regex) {
-        self.skip_reg = reg;
+    fn set_skip_reg(&mut self, reg_str: &str) {
+        self.skip_reg = Regex::new(reg_str).unwrap();
     }
 
     fn run<T: Product<Self>>(&mut self) -> Result<T, (String, usize)> {
@@ -282,7 +282,7 @@ fn test() {
 
     let s = "S(Z) plus S(S(S(Z))) is S(S(S(S(Z))))";
     let mut ruly = Ruly::new();
-    ruly.set_skip_reg(Regex::new(r"[ \n\r\t]*").unwrap());
+    ruly.set_skip_reg(r"[ \n\r\t]*");
     ruly.set_input(&s);
 
     match ruly.run::<Judgement>() {
