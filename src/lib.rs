@@ -1,5 +1,7 @@
 pub use pmacro_ruly::*;
+#[doc(hidden)]
 pub use regex::Regex;
+#[doc(hidden)]
 pub use std::vec;
 
 #[macro_export(local_inner_macros)]
