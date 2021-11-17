@@ -27,6 +27,62 @@ macro_rules! __set_fun_sub {
         v
     }};
 
+    ( [$t:ty, ($reg:expr), 0]; $p:ident ) => {{
+        let tmp = $p.get_current();
+        let reg = Regex::new($reg).unwrap();
+
+        if let Ok(a) = <$t>::read($p) {
+            let mut v = vec![("".to_string(), a)];
+
+            while let Some((end, s)) = $p.find_at_top(reg.clone()) {
+                if ReservedWords.contains(&{ &s.to_string() }) {
+                    return Err((String::from("no match"), tmp));
+                }
+
+                $p.set_current(end);
+                $p.skip();
+
+                if let Ok(b) = <$t>::read($p) {
+                    v.push((s.to_string(), b));
+                } else {
+                    return Err((String::from("no match"), tmp));
+                }
+            }
+
+            v
+        } else {
+            vec![]
+        }
+    }};
+
+    ( [$t:ty, ($reg:expr), 1]; $p:ident ) => {{
+        let tmp = $p.get_current();
+        let reg = Regex::new($reg).unwrap();
+
+        if let Ok(a) = <$t>::read($p) {
+            let mut v = vec![("".to_string(), a)];
+
+            while let Some((end, s)) = $p.find_at_top(reg.clone()) {
+                if ReservedWords.contains(&{ &s.to_string() }) {
+                    return Err((String::from("no match"), tmp));
+                }
+
+                $p.set_current(end);
+                $p.skip();
+
+                if let Ok(b) = <$t>::read($p) {
+                    v.push((s.to_string(), b));
+                } else {
+                    return Err((String::from("no match"), tmp));
+                }
+            }
+
+            v
+        } else {
+            return Err((String::from("no match"), tmp));
+        }
+    }};
+
     ( $t:ty; $p:ident ) => {{
         Box::new(<$t>::read($p)?)
     }};
@@ -126,6 +182,8 @@ macro_rules! __set_fun {
     };
 }
 
+// $v => $i $sorts | $i $sorts | ...
+// $sorts = ( $sort, $sort, ... )
 #[macro_export(local_inner_macros)]
 macro_rules! add_rule {
     ( $v:ident => $( $i:ident $sorts:tt )|+ ) => {
@@ -136,15 +194,13 @@ macro_rules! add_rule {
                 let start_point = parser.get_current();
 
                 $(
-                if !std::stringify!($i).starts_with("Dummy") {
-                    let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
-                        __set_fun!($v;$i;$sorts;p)
-                    };
-                    if let Ok(a) = tmp(parser){
-                        return Ok(a);
-                    }
-                    parser.set_current(start_point);
+                let tmp = |p: &mut P| -> Result<Self, (String, usize)> {
+                    __set_fun!($v;$i;$sorts;p)
+                };
+                if let Ok(a) = tmp(parser){
+                    return Ok(a);
                 }
+                parser.set_current(start_point);
                 )*
 
                 Err((String::from("no match"), start_point))
@@ -266,35 +322,39 @@ impl Ruly {
     }
 }
 
-reserved_words!();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test() {
+        reserved_words!();
 
-#[test]
-fn test() {
-    add_rule!(
-        Nat => Zero ({("Z")})
-            |   Succ ({("S")},{(r"\(")},Nat,{(r"\)")})
-    );
+        add_rule!(
+            Nat => Zero ({("Z")})
+                |   Succ ({("S")},{(r"\(")},Nat,{(r"\)")})
+        );
 
-    add_rule!(
-        Judgement => Plus (Nat, {("plus")}, Nat, {("is")}, Nat)
-            |   Times (Nat, {("times")}, Nat, {("is")}, Nat)
-    );
+        add_rule!(
+            Judgement => Plus (Nat, {("plus")}, Nat, {("is")}, Nat)
+                |   Times (Nat, {("times")}, Nat, {("is")}, Nat)
+        );
 
-    println!("reserved words: {:?}", ReservedWords);
+        println!("reserved words: {:?}", ReservedWords);
 
-    let s = "S(Z) plus S(S(S(Z))) is S(S(S(S(Z))))";
-    let mut ruly = Ruly::new();
-    ruly.set_skip_reg(r"[ \n\r\t]*");
-    ruly.set_input(&s);
+        let s = "S(Z) plus S(S(S(Z))) is S(S(S(S(Z))))";
+        let mut ruly = Ruly::new();
+        ruly.set_skip_reg(r"[ \n\r\t]*");
+        ruly.set_input(&s);
 
-    match ruly.run::<Judgement>() {
-        Ok(judgement) => {
-            println!("{:?}", judgement);
-            println!("{}", judgement);
-        }
+        match ruly.run::<Judgement>() {
+            Ok(judgement) => {
+                println!("{:?}", judgement);
+                println!("{}", judgement);
+            }
 
-        err => {
-            println!("{:?}", err);
+            err => {
+                println!("{:?}", err);
+            }
         }
     }
 }

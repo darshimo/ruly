@@ -94,6 +94,15 @@ pub fn create_enum(item: TokenStream) -> TokenStream {
                                             } else {
                                                 panic!("syntax error8.");
                                             }
+                                        } else if g.delimiter() == Delimiter::Bracket {
+                                            // Vec<(String,T)>
+                                            if let Some(TokenTree::Ident(id)) =
+                                                g.stream().into_iter().next()
+                                            {
+                                                s += &format!("Vec<(String,{})>", id.to_string());
+                                            } else {
+                                                panic!("syntax error8.");
+                                            }
                                         } else {
                                             panic!("syntax error9.");
                                         }
@@ -237,6 +246,39 @@ pub fn create_match(item: TokenStream) -> TokenStream {
                                                 exp += &format!(
                                                     r#"for (i, tmp) in field{}.into_iter().enumerate() {}if i>0 {}write!(f," ");{}write!(f,"{}{}",tmp);{}"#,
                                                     n, r"{", r"{", r"}", r"{", r"}", r"}"
+                                                );
+                                            } else {
+                                                panic!("syntax error8.");
+                                            }
+                                        } else if g.delimiter() == Delimiter::Bracket {
+                                            // Vec<(String,T)>
+                                            val += "field";
+                                            val += &format!("{}", n);
+
+                                            if let Some(TokenTree::Ident(_)) =
+                                                g.stream().into_iter().next()
+                                            {
+                                                exp += &format!(
+                                                    r#"for (i, (sep,tmp)) in field{}.into_iter().enumerate() {}if i>0 {}write!(f," ");{}write!(f,"{}{}{}{}{}{}",if i==0 {}""{}else{}sep{},if i==0 {}""{}else{}" "{},tmp);{}"#,
+                                                    n,
+                                                    r"{",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"{",
+                                                    r"}",
+                                                    r"}"
                                                 );
                                             } else {
                                                 panic!("syntax error8.");
