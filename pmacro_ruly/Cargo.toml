@@ -1,0 +1,16 @@
+[package]
+name = "pmacro_ruly"
+version = "0.2.1"
+authors = ["darshimo <takumishimoda7623@gmail.com>"]
+edition = "2018"
+keywords = ["proc_macro"]
+description = "macros for ruly"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/darshimo/pmacro_ruly"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies]
