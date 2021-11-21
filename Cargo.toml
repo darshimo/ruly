@@ -1,6 +1,6 @@
 [package]
 name = "ruly"
-version = "3.0.0"
+version = "4.0.0"
 authors = ["darshimo <takumishimoda7623@gmail.com>"]
 edition = "2018"
 categories = ["parsing"]
@@ -13,4 +13,4 @@ repository = "https://github.com/darshimo/ruly"
 
 [dependencies]
 regex = "1.4.3"
-pmacro_ruly = { path = "pmacro_ruly", version = "1.0.0"}
+pmacro_ruly = { path = "pmacro_ruly", version = "2.0.0"}

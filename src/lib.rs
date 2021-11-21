@@ -2,29 +2,44 @@ pub use pmacro_ruly::*;
 #[doc(hidden)]
 pub use regex::Regex;
 #[doc(hidden)]
-pub use std::vec;
+pub mod stack;
+
+pub use std::cell::RefCell;
+pub use std::rc::Rc;
 
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __set_fun_sub {
     ( ($t:ty,0); $p:ident ) => {{
-        let mut v = vec![];
+        let mut st = stack::Stack::Nil;
 
         while let Ok(a) = <$t>::read($p) {
-            v.push(a);
+            st = stack::Stack::Cons(
+                Rc::new(RefCell::new(st)),
+                "".to_string(),
+                Rc::new(RefCell::new(a)),
+            );
         }
 
-        v
+        Rc::new(RefCell::new(st))
     }};
 
     ( ($t:ty,1); $p:ident ) => {{
-        let mut v = vec![<$t>::read($p)?];
+        let mut st = stack::Stack::Cons(
+            Rc::new(RefCell::new(stack::Stack::Nil)),
+            "".to_string(),
+            Rc::new(RefCell::new(<$t>::read($p)?)),
+        );
 
         while let Ok(a) = <$t>::read($p) {
-            v.push(a);
+            st = stack::Stack::Cons(
+                Rc::new(RefCell::new(st)),
+                "".to_string(),
+                Rc::new(RefCell::new(a)),
+            );
         }
 
-        v
+        Rc::new(RefCell::new(st))
     }};
 
     ( [$t:ty, ($reg:expr), 0]; $p:ident ) => {{
@@ -32,7 +47,11 @@ macro_rules! __set_fun_sub {
         let reg = Regex::new($reg).unwrap();
 
         if let Ok(a) = <$t>::read($p) {
-            let mut v = vec![("".to_string(), a)];
+            let mut st = stack::Stack::Cons(
+                Rc::new(RefCell::new(stack::Stack::Nil)),
+                "".to_string(),
+                Rc::new(RefCell::new(a)),
+            );
 
             while let Some((end, s)) = $p.find_at_top(reg.clone()) {
                 if ReservedWords.contains(&{ &s.to_string() }) {
@@ -43,15 +62,19 @@ macro_rules! __set_fun_sub {
                 $p.skip();
 
                 if let Ok(b) = <$t>::read($p) {
-                    v.push((s.to_string(), b));
+                    st = stack::Stack::Cons(
+                        Rc::new(RefCell::new(st)),
+                        s.to_string(),
+                        Rc::new(RefCell::new(b)),
+                    );
                 } else {
                     return Err((String::from("no match"), tmp));
                 }
             }
 
-            v
+            Rc::new(RefCell::new(st))
         } else {
-            vec![]
+            Rc::new(RefCell::new(stack::Stack::Nil))
         }
     }};
 
@@ -60,7 +83,11 @@ macro_rules! __set_fun_sub {
         let reg = Regex::new($reg).unwrap();
 
         if let Ok(a) = <$t>::read($p) {
-            let mut v = vec![("".to_string(), a)];
+            let mut st = stack::Stack::Cons(
+                Rc::new(RefCell::new(stack::Stack::Nil)),
+                "".to_string(),
+                Rc::new(RefCell::new(a)),
+            );
 
             while let Some((end, s)) = $p.find_at_top(reg.clone()) {
                 if ReservedWords.contains(&{ &s.to_string() }) {
@@ -71,20 +98,24 @@ macro_rules! __set_fun_sub {
                 $p.skip();
 
                 if let Ok(b) = <$t>::read($p) {
-                    v.push((s.to_string(), b));
+                    st = stack::Stack::Cons(
+                        Rc::new(RefCell::new(st)),
+                        s.to_string(),
+                        Rc::new(RefCell::new(b)),
+                    );
                 } else {
                     return Err((String::from("no match"), tmp));
                 }
             }
 
-            v
+            Rc::new(RefCell::new(st))
         } else {
             return Err((String::from("no match"), tmp));
         }
     }};
 
     ( $t:ty; $p:ident ) => {{
-        Box::new(<$t>::read($p)?)
+        Rc::new(RefCell::new(<$t>::read($p)?))
     }};
 
     ( {  ( $t:expr ), $sort:ty, $c:expr }; $p:ident ) => {{

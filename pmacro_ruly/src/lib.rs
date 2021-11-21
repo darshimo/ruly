@@ -30,8 +30,8 @@ pub fn create_enum(item: TokenStream) -> TokenStream {
                             for tree in g212.stream() {
                                 match tree {
                                     TokenTree::Ident(id) => {
-                                        // Box<T>
-                                        s += &format!("Box<{}>", id.to_string());
+                                        // Rc<RefCell<T>>
+                                        s += &format!("Rc<RefCell<{}>>", id.to_string());
                                     }
 
                                     TokenTree::Group(g) => {
@@ -86,20 +86,26 @@ pub fn create_enum(item: TokenStream) -> TokenStream {
                                                 panic!("syntax error9.");
                                             }
                                         } else if g.delimiter() == Delimiter::Parenthesis {
-                                            // Vec<T>
+                                            // Vec<Rc<RefCell<T>>>
                                             if let Some(TokenTree::Ident(id)) =
                                                 g.stream().into_iter().next()
                                             {
-                                                s += &format!("Vec<{}>", id.to_string());
+                                                s += &format!(
+                                                    "Rc<RefCell<stack::Stack<{}>>>",
+                                                    id.to_string()
+                                                );
                                             } else {
                                                 panic!("syntax error8.");
                                             }
                                         } else if g.delimiter() == Delimiter::Bracket {
-                                            // Vec<(String,T)>
+                                            // Vec<(String,Rc<RefCell<T>>)>
                                             if let Some(TokenTree::Ident(id)) =
                                                 g.stream().into_iter().next()
                                             {
-                                                s += &format!("Vec<(String,{})>", id.to_string());
+                                                s += &format!(
+                                                    "Rc<RefCell<stack::Stack<{}>>>",
+                                                    id.to_string()
+                                                );
                                             } else {
                                                 panic!("syntax error8.");
                                             }
@@ -165,12 +171,14 @@ pub fn create_match(item: TokenStream) -> TokenStream {
                             for tree in g212.stream() {
                                 match tree {
                                     TokenTree::Ident(_) => {
-                                        // Box<T>
+                                        // Rc<RefCell<T>>
                                         val += "field";
                                         val += &format!("{}", n);
 
-                                        exp +=
-                                            &format!(r#"write!(f,"{}{}",field{});"#, r"{", r"}", n);
+                                        exp += &format!(
+                                            r#"write!(f,"{}{}",field{}.borrow());"#,
+                                            r"{", r"}", n
+                                        );
 
                                         n += 1;
                                     }
@@ -236,7 +244,7 @@ pub fn create_match(item: TokenStream) -> TokenStream {
                                                 panic!("syntax error9.");
                                             }
                                         } else if g.delimiter() == Delimiter::Parenthesis {
-                                            // Vec<T>
+                                            // Vec<Rc<RefCell<T>>>
                                             val += "field";
                                             val += &format!("{}", n);
 
@@ -244,14 +252,14 @@ pub fn create_match(item: TokenStream) -> TokenStream {
                                                 g.stream().into_iter().next()
                                             {
                                                 exp += &format!(
-                                                    r#"for (i, tmp) in field{}.into_iter().enumerate() {}if i>0 {}write!(f," ");{}write!(f,"{}{}",tmp);{}"#,
-                                                    n, r"{", r"{", r"}", r"{", r"}", r"}"
+                                                    r#"write!(f,"{}{}",field{}.borrow());"#,
+                                                    r"{", r"}", n
                                                 );
                                             } else {
                                                 panic!("syntax error8.");
                                             }
                                         } else if g.delimiter() == Delimiter::Bracket {
-                                            // Vec<(String,T)>
+                                            // Vec<(String,Rc<RefCell<T>>)>
                                             val += "field";
                                             val += &format!("{}", n);
 
@@ -259,26 +267,8 @@ pub fn create_match(item: TokenStream) -> TokenStream {
                                                 g.stream().into_iter().next()
                                             {
                                                 exp += &format!(
-                                                    r#"for (i, (sep,tmp)) in field{}.into_iter().enumerate() {}if i>0 {}write!(f," ");{}write!(f,"{}{}{}{}{}{}",if i==0 {}""{}else{}sep{},if i==0 {}""{}else{}" "{},tmp);{}"#,
-                                                    n,
-                                                    r"{",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"{",
-                                                    r"}",
-                                                    r"}"
+                                                    r#"write!(f,"{}{}",field{}.borrow());"#,
+                                                    r"{", r"}", n
                                                 );
                                             } else {
                                                 panic!("syntax error8.");
