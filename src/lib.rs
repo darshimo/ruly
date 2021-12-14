@@ -4,57 +4,36 @@ pub use regex::Regex;
 #[doc(hidden)]
 pub mod stack;
 
-pub use std::cell::RefCell;
-pub use std::rc::Rc;
-
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __set_fun_sub {
-    ( ($t:ty,0); $p:ident ) => {{
-        let mut st = stack::Stack::Nil;
+    ( [$t:ty]; $p:ident ) => {
+        __set_fun_sub!([$t, $t];$p)
+    };
+
+    ( [$s:ty, $t:ty]; $p:ident ) => {{
+        let mut st = stack::Stack::new(<$s>::read($p)?);
 
         while let Ok(a) = <$t>::read($p) {
-            st = stack::Stack::Cons(
-                Rc::new(RefCell::new(st)),
-                "".to_string(),
-                Rc::new(RefCell::new(a)),
-            );
+            st.push("".to_string(), a);
         }
 
-        Rc::new(RefCell::new(st))
+        st
     }};
 
-    ( ($t:ty,1); $p:ident ) => {{
-        let mut st = stack::Stack::Cons(
-            Rc::new(RefCell::new(stack::Stack::Nil)),
-            "".to_string(),
-            Rc::new(RefCell::new(<$t>::read($p)?)),
-        );
+    ( [$t:ty;($reg:expr)]; $p:ident ) => {
+        __set_fun_sub!([$t, $t; ($reg)];$p)
+    };
 
-        while let Ok(a) = <$t>::read($p) {
-            st = stack::Stack::Cons(
-                Rc::new(RefCell::new(st)),
-                "".to_string(),
-                Rc::new(RefCell::new(a)),
-            );
-        }
-
-        Rc::new(RefCell::new(st))
-    }};
-
-    ( [$t:ty, ($reg:expr), 0]; $p:ident ) => {{
+    ( [$s:ty, $t:ty; ($reg:expr)]; $p:ident ) => {{
         let tmp = $p.get_current();
         let reg = Regex::new($reg).unwrap();
 
-        if let Ok(a) = <$t>::read($p) {
-            let mut st = stack::Stack::Cons(
-                Rc::new(RefCell::new(stack::Stack::Nil)),
-                "".to_string(),
-                Rc::new(RefCell::new(a)),
-            );
+        if let Ok(a) = <$s>::read($p) {
+            let mut st = stack::Stack::new(a);
 
-            while let Some((end, s)) = $p.find_at_top(reg.clone()) {
-                if ReservedWords.contains(&{ &s.to_string() }) {
+            while let Some((end, infix)) = $p.find_at_top(reg.clone()) {
+                if ReservedWords.contains(&{ &infix.to_string() }) {
                     return Err((String::from("no match"), tmp));
                 }
 
@@ -62,60 +41,23 @@ macro_rules! __set_fun_sub {
                 $p.skip();
 
                 if let Ok(b) = <$t>::read($p) {
-                    st = stack::Stack::Cons(
-                        Rc::new(RefCell::new(st)),
-                        s.to_string(),
-                        Rc::new(RefCell::new(b)),
+                    st.push(
+                        infix.to_string(),
+                        b,
                     );
                 } else {
                     return Err((String::from("no match"), tmp));
                 }
             }
 
-            Rc::new(RefCell::new(st))
-        } else {
-            Rc::new(RefCell::new(stack::Stack::Nil))
-        }
-    }};
-
-    ( [$t:ty, ($reg:expr), 1]; $p:ident ) => {{
-        let tmp = $p.get_current();
-        let reg = Regex::new($reg).unwrap();
-
-        if let Ok(a) = <$t>::read($p) {
-            let mut st = stack::Stack::Cons(
-                Rc::new(RefCell::new(stack::Stack::Nil)),
-                "".to_string(),
-                Rc::new(RefCell::new(a)),
-            );
-
-            while let Some((end, s)) = $p.find_at_top(reg.clone()) {
-                if ReservedWords.contains(&{ &s.to_string() }) {
-                    return Err((String::from("no match"), tmp));
-                }
-
-                $p.set_current(end);
-                $p.skip();
-
-                if let Ok(b) = <$t>::read($p) {
-                    st = stack::Stack::Cons(
-                        Rc::new(RefCell::new(st)),
-                        s.to_string(),
-                        Rc::new(RefCell::new(b)),
-                    );
-                } else {
-                    return Err((String::from("no match"), tmp));
-                }
-            }
-
-            Rc::new(RefCell::new(st))
+            st
         } else {
             return Err((String::from("no match"), tmp));
         }
     }};
 
     ( $t:ty; $p:ident ) => {{
-        Rc::new(RefCell::new(<$t>::read($p)?))
+        Box::new(<$t>::read($p)?)
     }};
 
     ( {  ( $t:expr ), $sort:ty, $c:expr }; $p:ident ) => {{
